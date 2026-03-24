@@ -253,3 +253,118 @@ body.light div[class*="bg-red-900\/30"] {
   background-color: #fef2f2 !important;
   border-color: #fca5a5 !important;
 }
+
+/* ===== Light mode: Prediction panels text ===== */
+/* Main text (prices, titles) inside prediction/analysis panels */
+body.light main .text-white {
+  color: #0f172a !important;
+}
+body.light main .text-slate-200 {
+  color: #1e293b !important;
+}
+body.light main .text-slate-300 {
+  color: #334155 !important;
+}
+body.light main .text-slate-400 {
+  color: #64748b !important;
+}
+body.light main .text-slate-500 {
+  color: #94a3b8 !important;
+}
+body.light main .text-slate-600 {
+  color: #94a3b8 !important;
+}
+
+/* Emerald/red accent colors remain vibrant in light mode for contrast */
+body.light main .text-emerald-400 {
+  color: #059669 !important;
+}
+body.light main .text-emerald-500 {
+  color: #047857 !important;
+}
+body.light main .text-red-400 {
+  color: #dc2626 !important;
+}
+body.light main .text-red-500 {
+  color: #b91c1c !important;
+}
+body.light main .text-yellow-400 {
+  color: #d97706 !important;
+}
+body.light main .text-amber-400 {
+  color: #d97706 !important;
+}
+body.light main .text-amber-500 {
+  color: #b45309 !important;
+}
+body.light main .text-cacao-400 {
+  color: #b86420 !important;
+}
+
+/* Prediction icon circles */
+body.light main .bg-emerald-900\/50 {
+  background-color: #d1fae5 !important;
+}
+body.light main .bg-red-900\/50 {
+  background-color: #fee2e2 !important;
+}
+
+/* Detail cards background */
+body.light main .bg-slate-800\/50 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+body.light main .bg-slate-800\/40 {
+  background-color: #f8fafc !important;
+}
+body.light main .bg-slate-800\/30 {
+  background-color: #f8fafc !important;
+}
+
+/* Amber/baba panel */
+body.light main [class*="bg-amber-900\/10"] {
+  background-color: #fffbeb !important;
+}
+body.light main [class*="border-amber-800\/50"] {
+  border-color: #fcd34d !important;
+}
+
+/* Regional cards inside prediction */
+body.light main [class*="border-blue-700"][class*="bg-blue-900"] {
+  background-color: #eff6ff !important;
+  border-color: #93c5fd !important;
+}
+body.light main [class*="border-orange-700"][class*="bg-orange-900"] {
+  background-color: #fff7ed !important;
+  border-color: #fdba74 !important;
+}
+body.light main [class*="border-green-700"][class*="bg-green-900"] {
+  background-color: #f0fdf4 !important;
+  border-color: #86efac !important;
+}
+
+/* Backtesting correct/incorrect panels */
+body.light main [class*="bg-emerald-900\/10"] {
+  background-color: #ecfdf5 !important;
+}
+body.light main [class*="bg-red-900\/10"] {
+  background-color: #fef2f2 !important;
+}
+body.light main [class*="border-emerald-800\/50"] {
+  border-color: #6ee7b7 !important;
+}
+body.light main [class*="border-red-800\/50"] {
+  border-color: #fca5a5 !important;
+}
+
+/* News sentiment badges */
+body.light main [class*="bg-emerald-900\/30"] {
+  background-color: #d1fae5 !important;
+}
+body.light main [class*="bg-red-900\/30"] {
+  background-color: #fee2e2 !important;
+}
+body.light main [class*="bg-slate-800\/50"][class*="border-slate-700"] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
