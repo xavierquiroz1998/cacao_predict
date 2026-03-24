@@ -15,6 +15,7 @@ from app.services.data_pipeline import (
     is_using_demo_data,
 )
 from app.services.explainability import analyze_price_movement, get_shap_explanation
+from app.services.news_service import fetch_news, get_sentiment_summary
 from app.services.feature_engineering import prepare_features
 from app.models.ensemble import EnsemblePredictor
 
@@ -282,6 +283,24 @@ async def get_regional_prices(baba_ratio: float = Query(default=0.40, ge=0.1, le
             "is_demo": is_using_demo_data(),
             "international_price_usd": round(international_price, 2),
             "regions": regions,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/news")
+async def get_news(
+    max_articles: int = Query(default=15, ge=1, le=50),
+    lang: str = Query(default="en"),
+):
+    """Obtiene noticias recientes del cacao con análisis de sentimiento."""
+    try:
+        articles = fetch_news(max_articles=max_articles, lang=lang)
+        summary = get_sentiment_summary(articles)
+
+        return {
+            "articles": articles,
+            "sentiment_summary": summary,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

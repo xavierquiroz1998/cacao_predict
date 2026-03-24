@@ -149,6 +149,19 @@ El precio internacional se ajusta por pais segun el porcentaje que tipicamente r
 | Costa de Marfil | 60% | Franco CFA (XOF) | Regulado por Conseil du Cafe-Cacao |
 | Ghana | 65% | Cedi (GHS) | Regulado por COCOBOD |
 
+### 4. Noticias y Sentimiento del Mercado
+- Noticias en tiempo real de Google News sobre cacao/cocoa
+- Analisis de sentimiento automatico (NLP con VADER + lexico financiero)
+- Resumen del sentimiento general: alcista, bajista o neutral
+- Distribucion de noticias positivas/negativas/neutras
+- Senal de impacto en el precio
+
+### 5. Comparacion Interactiva de Modelos
+- Toggle para activar/desactivar cada modelo (SARIMA, XGBoost, LSTM)
+- Grafico superpuesto con prediccion individual de cada modelo vs ensemble
+- Tabla de metricas (RMSE, MAE, MAPE) y pesos del ensemble
+- Visualizacion del intervalo de confianza
+
 ## Autor
 
 Xavier Quiroz - [@xavierquiroz1998](https://github.com/xavierquiroz1998)

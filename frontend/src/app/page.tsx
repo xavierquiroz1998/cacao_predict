@@ -8,25 +8,29 @@ import {
   Loader2,
   RefreshCw,
   ChevronDown,
+  Newspaper,
 } from 'lucide-react';
 import PriceCard from '@/components/PriceCard';
 import HistoricalChart from '@/components/HistoricalChart';
 import PredictionChart from '@/components/PredictionChart';
 import AnalysisPanel from '@/components/AnalysisPanel';
 import ModelMetrics from '@/components/ModelMetrics';
+import ModelComparison from '@/components/ModelComparison';
 import PredictionSummary from '@/components/PredictionSummary';
 import RegionalPrices from '@/components/RegionalPrices';
 import PredictionRegionalPrices from '@/components/PredictionRegionalPrices';
+import NewsPanel from '@/components/NewsPanel';
 import {
   fetchCurrentPrice,
   fetchHistoricalPrices,
   fetchPrediction,
   fetchAnalysis,
   fetchRegionalPrices,
+  fetchNews,
 } from '@/lib/api';
 import { PRICE_UNITS, getUnit, convertPrice } from '@/lib/units';
 
-type Tab = 'dashboard' | 'prediction' | 'analysis';
+type Tab = 'dashboard' | 'prediction' | 'analysis' | 'news';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -39,6 +43,7 @@ export default function Home() {
   const [prediction, setPrediction] = useState<any>(null);
   const [analysis, setAnalysis] = useState<any>(null);
   const [regionalPrices, setRegionalPrices] = useState<any>(null);
+  const [news, setNews] = useState<any>(null);
 
   // Settings
   const [babaRatio, setBabaRatio] = useState(0.40);
@@ -106,6 +111,18 @@ export default function Home() {
     }
   }, [historyYears]);
 
+  const loadNews = useCallback(async () => {
+    setLoadingKey('news', true);
+    try {
+      const data = await fetchNews('en', 15);
+      setNews(data);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoadingKey('news', false);
+    }
+  }, []);
+
   useEffect(() => {
     loadCurrentPrice();
     loadHistorical();
@@ -115,6 +132,7 @@ export default function Home() {
     { id: 'dashboard' as Tab, label: 'Dashboard', icon: BarChart3 },
     { id: 'prediction' as Tab, label: 'Prediccion', icon: Brain },
     { id: 'analysis' as Tab, label: 'Analisis', icon: Activity },
+    { id: 'news' as Tab, label: 'Noticias', icon: Newspaper },
   ];
 
   return (
@@ -422,10 +440,18 @@ export default function Home() {
                   />
                 </div>
 
-                {/* Metricas */}
+                {/* Comparacion interactiva de modelos */}
                 <div className="card">
-                  <h2 className="card-header">Rendimiento de los Modelos</h2>
-                  <ModelMetrics weights={prediction.weights} metrics={prediction.metrics} />
+                  <h2 className="card-header">Comparacion de Modelos</h2>
+                  <p className="text-xs text-slate-500 mb-4">
+                    Activa o desactiva cada modelo para comparar sus predicciones individuales vs el ensemble
+                  </p>
+                  <ModelComparison
+                    prediction={prediction}
+                    historicalDates={historical?.data?.map((d: any) => d.date) || []}
+                    historicalPrices={historical?.data?.map((d: any) => d.close_seco) || []}
+                    unit={unit}
+                  />
                 </div>
               </>
             )}
@@ -460,6 +486,48 @@ export default function Home() {
               ) : (
                 <div className="text-center text-slate-500 py-16">
                   Haz clic en &quot;Actualizar&quot; para cargar el analisis
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ===== NEWS ===== */}
+        {activeTab === 'news' && (
+          <div className="space-y-6">
+            <div className="card">
+              <h2 className="card-header">Noticias del Cacao y Sentimiento del Mercado</h2>
+              <p className="text-xs text-slate-500 mb-4">
+                Noticias recientes sobre el cacao con analisis automatico de sentimiento.
+                El sentimiento de las noticias puede influir en los movimientos del precio.
+              </p>
+              {loading.news ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="w-8 h-8 text-cacao-500 animate-spin" />
+                </div>
+              ) : news ? (
+                <NewsPanel
+                  articles={news.articles}
+                  sentimentSummary={news.sentiment_summary}
+                  onRefresh={loadNews}
+                  loading={loading.news || false}
+                />
+              ) : (
+                <div className="text-center py-16">
+                  <Newspaper className="w-12 h-12 text-slate-700 mx-auto mb-3" />
+                  <p className="text-slate-500 mb-4">Carga las noticias mas recientes del mercado del cacao</p>
+                  <button
+                    onClick={loadNews}
+                    disabled={loading.news}
+                    className="btn-primary flex items-center gap-2 mx-auto"
+                  >
+                    {loading.news ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Newspaper className="w-4 h-4" />
+                    )}
+                    Cargar Noticias
+                  </button>
                 </div>
               )}
             </div>

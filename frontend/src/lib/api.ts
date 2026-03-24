@@ -62,3 +62,9 @@ export async function fetchRegionalPrices(babaRatio: number = 0.40) {
   if (!res.ok) throw new Error('Error al obtener precios regionales');
   return res.json();
 }
+
+export async function fetchNews(lang: string = 'en', maxArticles: number = 15) {
+  const res = await fetch(`${BACKEND_DIRECT}/news?lang=${lang}&max_articles=${maxArticles}`);
+  if (!res.ok) throw new Error('Error al obtener noticias');
+  return res.json();
+}
