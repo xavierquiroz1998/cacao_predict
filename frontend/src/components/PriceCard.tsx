@@ -21,8 +21,8 @@ export default function PriceCard({ title, price, change, changePct, currency, t
   return (
     <div className={`bg-gradient-to-br ${bgGradient} rounded-xl border ${borderColor} p-6 shadow-lg`}>
       <div className="flex justify-between items-start mb-2">
-        <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider">{title}</h3>
-        <span className={type === 'seco' ? 'text-cacao-400 text-xs' : 'text-amber-400 text-xs'}>
+        <h3 className="text-sm font-medium text-white/70 uppercase tracking-wider">{title}</h3>
+        <span className="text-white/60 text-xs">
           {currency}
         </span>
       </div>

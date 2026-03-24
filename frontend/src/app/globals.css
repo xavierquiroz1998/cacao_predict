@@ -2,83 +2,157 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== MODO OSCURO (default) ===== */
+/* ===== CSS Variables para temas ===== */
+:root {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-card: #1e293b;
+  --bg-card-hover: #334155;
+  --bg-input: #334155;
+  --bg-badge: #334155;
+  --border-primary: #334155;
+  --border-secondary: #475569;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+body.light {
+  --bg-primary: #f1f5f9;
+  --bg-secondary: #e2e8f0;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
+  --bg-input: #ffffff;
+  --bg-badge: #f1f5f9;
+  --border-primary: #e2e8f0;
+  --border-secondary: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* ===== Base ===== */
 body {
-  background-color: #0f172a;
-  color: #e2e8f0;
+  background-color: var(--bg-primary);
+  color: var(--text-secondary);
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* ===== MODO CLARO ===== */
-body.light {
-  background-color: #f1f5f9;
-  color: #1e293b;
+/* ===== Componentes ===== */
+.card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
 }
 
-/* --- Header & Nav --- */
+.card-header {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+.badge-up {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+body.light .badge-up {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.badge-down {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+body.light .badge-down {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-neutral {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  background-color: var(--bg-badge);
+  color: var(--text-muted);
+}
+
+.btn-primary {
+  @apply font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  background-color: #b86420;
+  color: #ffffff;
+}
+.btn-primary:hover {
+  background-color: #974b1d;
+}
+
+.btn-secondary {
+  @apply font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  background-color: var(--bg-badge);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
+}
+.btn-secondary:hover {
+  background-color: var(--bg-secondary);
+}
+
+.select-custom {
+  @apply rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cacao-500;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-secondary);
+  color: var(--text-primary);
+}
+
+/* ===== Header ===== */
+header {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-primary) !important;
+  backdrop-filter: blur(8px);
+}
 body.light header {
-  background-color: rgba(255,255,255,0.95) !important;
-  border-color: #e2e8f0 !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-body.light header h1 { color: #0f172a !important; }
-body.light header p { color: #64748b !important; }
-body.light header label { color: #475569 !important; }
-body.light header span { color: #64748b !important; }
-body.light header select {
-  background-color: #fff !important;
-  border-color: #cbd5e1 !important;
-  color: #334155 !important;
-}
-body.light header input[type="checkbox"] {
-  background-color: #fff !important;
-  border-color: #cbd5e1 !important;
-}
-body.light header button[class*="bg-slate"] {
-  background-color: #f1f5f9 !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
-body.light nav button {
-  color: #64748b !important;
+/* ===== Footer ===== */
+footer {
+  border-color: var(--border-primary) !important;
 }
-body.light nav button:hover {
-  color: #1e293b !important;
-  background-color: #f1f5f9 !important;
-}
-
-/* --- Cards --- */
-body.light .card {
-  background-color: #fff !important;
-  border-color: #e2e8f0 !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
-}
-body.light .card-header {
-  color: #1e293b !important;
+footer div {
+  color: var(--text-dim) !important;
 }
 
-/* --- Price Cards --- */
-body.light div[class*="from-cacao-900"] {
-  background: linear-gradient(135deg, #fdf8f0, #f9eddb) !important;
-  border-color: #d4802a !important;
+/* ===== Light mode: Price Cards ===== */
+body.light div[class*="from-cacao-900"],
+body.light div[class*="from-cacao-800"] {
+  background: linear-gradient(135deg, #7b3d1f 0%, #b86420 100%) !important;
+  border-color: #974b1d !important;
 }
-body.light div[class*="from-amber-900"] {
-  background: linear-gradient(135deg, #fffbeb, #fef3c7) !important;
-  border-color: #f59e0b !important;
+body.light div[class*="from-amber-900"],
+body.light div[class*="from-amber-800"] {
+  background: linear-gradient(135deg, #92400e 0%, #d97706 100%) !important;
+  border-color: #b45309 !important;
 }
 
-/* --- General dark text/bg overrides for light mode --- */
-body.light [class*="bg-slate-800"] {
+/* ===== Light mode: generic dark backgrounds ===== */
+body.light [class*="bg-slate-800\/50"],
+body.light [class*="bg-slate-800\/40"],
+body.light [class*="bg-slate-800\/30"] {
   background-color: #f8fafc !important;
 }
-body.light [class*="bg-slate-700"] {
-  background-color: #e2e8f0 !important;
-}
-body.light [class*="bg-slate-900"] {
+body.light [class*="bg-slate-700\/30"],
+body.light [class*="bg-slate-700\/50"] {
   background-color: #f1f5f9 !important;
 }
-body.light [class*="border-slate-700"] {
-  border-color: #e2e8f0 !important;
-}
+
+/* ===== Light mode: borders ===== */
+body.light [class*="border-slate-700"],
 body.light [class*="border-slate-800"] {
   border-color: #e2e8f0 !important;
 }
@@ -86,7 +160,7 @@ body.light [class*="border-slate-600"] {
   border-color: #cbd5e1 !important;
 }
 
-/* --- Sentiment/Region panels --- */
+/* ===== Light mode: sentiment panels ===== */
 body.light [class*="bg-emerald-900"] {
   background-color: #ecfdf5 !important;
 }
@@ -105,118 +179,77 @@ body.light [class*="bg-orange-900"] {
 body.light [class*="bg-green-900"] {
   background-color: #f0fdf4 !important;
 }
-body.light [class*="border-emerald-800"] {
-  border-color: #a7f3d0 !important;
+
+body.light [class*="border-emerald-800"] { border-color: #6ee7b7 !important; }
+body.light [class*="border-red-800"] { border-color: #fca5a5 !important; }
+body.light [class*="border-amber-800"] { border-color: #fcd34d !important; }
+body.light [class*="border-blue-700"] { border-color: #93c5fd !important; }
+body.light [class*="border-orange-700"] { border-color: #fdba74 !important; }
+body.light [class*="border-green-700"] { border-color: #86efac !important; }
+
+/* ===== Light mode: nav pills ===== */
+body.light nav button {
+  color: #475569 !important;
 }
-body.light [class*="border-red-800"] {
-  border-color: #fecaca !important;
-}
-body.light [class*="border-amber-800"] {
-  border-color: #fde68a !important;
-}
-body.light [class*="border-blue-700"] {
-  border-color: #bfdbfe !important;
-}
-body.light [class*="border-orange-700"] {
-  border-color: #fed7aa !important;
-}
-body.light [class*="border-green-700"] {
-  border-color: #bbf7d0 !important;
+body.light nav button:hover {
+  color: #0f172a !important;
+  background-color: #f1f5f9 !important;
 }
 
-/* --- Footer --- */
-body.light footer {
-  border-color: #e2e8f0 !important;
+/* ===== Light mode: filter pills ===== */
+body.light button[class*="rounded-full"][class*="bg-slate-700"] {
+  background-color: #e2e8f0 !important;
+  color: #475569 !important;
 }
-body.light footer div {
-  color: #94a3b8 !important;
+body.light button[class*="rounded-full"][class*="bg-slate-700"]:hover {
+  background-color: #cbd5e1 !important;
+  color: #1e293b !important;
 }
 
-/* --- Table --- */
+/* ===== Light mode: tables ===== */
 body.light table th {
   background-color: #f8fafc !important;
   color: #475569 !important;
+  border-color: #e2e8f0 !important;
 }
 body.light table td {
   color: #334155 !important;
-}
-body.light table tr {
-  border-color: #e2e8f0 !important;
+  border-color: #f1f5f9 !important;
 }
 body.light table tr:hover {
   background-color: #f8fafc !important;
 }
-
-/* --- Badges for light mode --- */
-body.light .badge-up {
-  background-color: #d1fae5 !important;
-  color: #065f46 !important;
-}
-body.light .badge-down {
-  background-color: #fee2e2 !important;
-  color: #991b1b !important;
-}
-body.light .badge-neutral {
-  background-color: #f1f5f9 !important;
-  color: #475569 !important;
+body.light table tr {
+  border-color: #f1f5f9 !important;
 }
 
-/* --- Select & Buttons for light mode --- */
-body.light .select-custom {
+/* ===== Light mode: toggle buttons (model comparison) ===== */
+body.light button[class*="border-slate-600"][class*="bg-slate-800"] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+body.light button[class*="border-slate-800"][class*="bg-slate-900"] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* ===== Light mode: header controls text ===== */
+body.light header h1 { color: #0f172a !important; }
+body.light header p { color: #64748b !important; }
+body.light header label { color: #475569 !important; }
+body.light header span { color: #64748b !important; }
+body.light header select {
   background-color: #fff !important;
   border-color: #cbd5e1 !important;
   color: #334155 !important;
 }
-body.light .btn-secondary {
+body.light header button[class*="bg-slate-700"] {
   background-color: #f1f5f9 !important;
-  color: #475569 !important;
-  border: 1px solid #cbd5e1 !important;
-}
-body.light .btn-secondary:hover {
-  background-color: #e2e8f0 !important;
+  border: 1px solid #e2e8f0;
 }
 
-/* --- Period/interval filter pills --- */
-body.light button[class*="rounded-full"][class*="bg-slate-700"] {
-  background-color: #f1f5f9 !important;
-  color: #64748b !important;
-}
-body.light button[class*="rounded-full"][class*="bg-slate-700"]:hover {
-  background-color: #e2e8f0 !important;
-  color: #334155 !important;
-}
-
-/* =============================== */
-/* ===== Componentes (base) ===== */
-/* =============================== */
-.card {
-  @apply bg-slate-800 rounded-xl border border-slate-700 p-6 shadow-lg;
-}
-
-.card-header {
-  @apply text-lg font-semibold text-slate-200 mb-4;
-}
-
-.badge-up {
-  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-900/50 text-emerald-400;
-}
-
-.badge-down {
-  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-900/50 text-red-400;
-}
-
-.badge-neutral {
-  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-700 text-slate-300;
-}
-
-.btn-primary {
-  @apply bg-cacao-600 hover:bg-cacao-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
-}
-
-.btn-secondary {
-  @apply bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium py-2 px-4 rounded-lg transition-colors duration-200;
-}
-
-.select-custom {
-  @apply bg-slate-700 border border-slate-600 text-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cacao-500;
+/* ===== Light mode: error panel ===== */
+body.light div[class*="bg-red-900\/30"] {
+  background-color: #fef2f2 !important;
+  border-color: #fca5a5 !important;
 }
