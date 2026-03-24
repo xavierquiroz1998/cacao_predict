@@ -304,3 +304,93 @@ async def get_news(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/backtest")
+async def run_backtest(
+    horizon_days: int = Query(default=30, ge=7, le=90),
+    history_years: int = Query(default=5, ge=2, le=10),
+    n_points: int = Query(default=5, ge=3, le=10),
+):
+    """Ejecuta backtesting: predice desde puntos pasados y compara con precio real."""
+    try:
+        df = build_master_dataset(history_years)
+        df_feat = prepare_features(df)
+
+        if len(df_feat) < 200:
+            raise HTTPException(status_code=400, detail="No hay suficientes datos para backtesting")
+
+        import numpy as np
+
+        target_col = "Close_Seco"
+        exclude = ["Date", target_col] + [c for c in df_feat.columns if c.endswith("_Baba")]
+        feature_cols = [
+            c for c in df_feat.columns
+            if c not in exclude and df_feat[c].dtype in [np.float64, np.int64, np.int32, np.float32]
+        ]
+
+        # Seleccionar puntos de origen espaciados uniformemente en la última parte del dataset
+        total = len(df_feat)
+        # Los puntos de origen deben dejar espacio para horizon_days adelante
+        usable = total - horizon_days
+        if usable < 100:
+            raise HTTPException(status_code=400, detail="No hay suficientes datos")
+
+        step = max(1, (usable - 100) // (n_points - 1))
+        origin_indices = list(range(100, usable, step))[:n_points]
+
+        results = []
+        for origin_idx in origin_indices:
+            train_data = df_feat.iloc[:origin_idx].copy()
+            actual_data = df_feat.iloc[origin_idx : origin_idx + horizon_days].copy()
+
+            if len(actual_data) < horizon_days:
+                continue
+
+            origin_date = train_data["Date"].iloc[-1].strftime("%Y-%m-%d")
+            actual_prices = actual_data[target_col].values.tolist()
+            actual_dates = [d.strftime("%Y-%m-%d") for d in actual_data["Date"].values]
+
+            # Entrenar XGBoost rápido (solo este, para velocidad de backtesting)
+            from app.models.xgboost_model import XGBoostPredictor
+            X_train = train_data[feature_cols]
+            y_train = train_data[target_col]
+
+            xgb = XGBoostPredictor()
+            xgb.fit(X_train, y_train)
+            last_row = X_train.iloc[[-1]]
+            predicted_prices = xgb.predict_recursive(last_row, horizon_days)
+
+            # Calcular métricas
+            actual_arr = np.array(actual_prices)
+            pred_arr = np.array(predicted_prices[:len(actual_prices)])
+            mae = float(np.mean(np.abs(actual_arr - pred_arr)))
+            mape = float(np.mean(np.abs((actual_arr - pred_arr) / actual_arr)) * 100)
+
+            results.append({
+                "origin_date": origin_date,
+                "dates": actual_dates,
+                "actual_prices": [round(p, 2) for p in actual_prices],
+                "predicted_prices": [round(float(p), 2) for p in predicted_prices[:len(actual_prices)]],
+                "mae": round(mae, 2),
+                "mape": round(mape, 2),
+                "direction_correct": (predicted_prices[-1] > predicted_prices[0]) == (actual_prices[-1] > actual_prices[0]),
+            })
+
+        # Métricas globales
+        avg_mape = np.mean([r["mape"] for r in results]) if results else 0
+        direction_accuracy = np.mean([r["direction_correct"] for r in results]) * 100 if results else 0
+
+        return {
+            "results": results,
+            "global_metrics": {
+                "avg_mape": round(float(avg_mape), 2),
+                "direction_accuracy": round(float(direction_accuracy), 1),
+                "n_backtests": len(results),
+                "horizon_days": horizon_days,
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

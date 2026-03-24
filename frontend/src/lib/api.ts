@@ -68,3 +68,11 @@ export async function fetchNews(lang: string = 'en', maxArticles: number = 15) {
   if (!res.ok) throw new Error('Error al obtener noticias');
   return res.json();
 }
+
+export async function fetchBacktest(horizonDays: number = 30, historyYears: number = 5) {
+  const res = await fetch(
+    `${BACKEND_DIRECT}/backtest?horizon_days=${horizonDays}&history_years=${historyYears}&n_points=5`
+  );
+  if (!res.ok) throw new Error('Error al ejecutar backtesting');
+  return res.json();
+}

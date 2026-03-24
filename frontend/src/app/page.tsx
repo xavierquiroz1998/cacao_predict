@@ -9,6 +9,12 @@ import {
   RefreshCw,
   ChevronDown,
   Newspaper,
+  Sun,
+  Moon,
+  Download,
+  Globe,
+  History,
+  Map,
 } from 'lucide-react';
 import PriceCard from '@/components/PriceCard';
 import HistoricalChart from '@/components/HistoricalChart';
@@ -20,6 +26,8 @@ import PredictionSummary from '@/components/PredictionSummary';
 import RegionalPrices from '@/components/RegionalPrices';
 import PredictionRegionalPrices from '@/components/PredictionRegionalPrices';
 import NewsPanel from '@/components/NewsPanel';
+import ProducerMap from '@/components/ProducerMap';
+import BacktestPanel from '@/components/BacktestPanel';
 import {
   fetchCurrentPrice,
   fetchHistoricalPrices,
@@ -27,8 +35,16 @@ import {
   fetchAnalysis,
   fetchRegionalPrices,
   fetchNews,
+  fetchBacktest,
 } from '@/lib/api';
 import { PRICE_UNITS, getUnit, convertPrice } from '@/lib/units';
+import { Locale, LOCALES, t } from '@/lib/i18n';
+import {
+  exportHistoricalCSV,
+  exportPredictionCSV,
+  exportPredictionPDF,
+  exportAnalysisCSV,
+} from '@/lib/export';
 
 type Tab = 'dashboard' | 'prediction' | 'analysis' | 'news';
 
@@ -44,8 +60,11 @@ export default function Home() {
   const [analysis, setAnalysis] = useState<any>(null);
   const [regionalPrices, setRegionalPrices] = useState<any>(null);
   const [news, setNews] = useState<any>(null);
+  const [backtest, setBacktest] = useState<any>(null);
 
   // Settings
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [locale, setLocale] = useState<Locale>('es');
   const [babaRatio, setBabaRatio] = useState(0.40);
   const [showBaba, setShowBaba] = useState(true);
   const [historyYears, setHistoryYears] = useState(5);
@@ -123,16 +142,37 @@ export default function Home() {
     }
   }, []);
 
+  // Theme toggle
+  useEffect(() => {
+    if (theme === 'light') {
+      document.body.classList.add('light');
+    } else {
+      document.body.classList.remove('light');
+    }
+  }, [theme]);
+
+  const loadBacktest = async (horizonDays: number) => {
+    setLoadingKey('backtest', true);
+    try {
+      const data = await fetchBacktest(horizonDays, historyYears);
+      setBacktest(data);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoadingKey('backtest', false);
+    }
+  };
+
   useEffect(() => {
     loadCurrentPrice();
     loadHistorical();
   }, [loadCurrentPrice, loadHistorical]);
 
   const tabs = [
-    { id: 'dashboard' as Tab, label: 'Dashboard', icon: BarChart3 },
-    { id: 'prediction' as Tab, label: 'Prediccion', icon: Brain },
-    { id: 'analysis' as Tab, label: 'Analisis', icon: Activity },
-    { id: 'news' as Tab, label: 'Noticias', icon: Newspaper },
+    { id: 'dashboard' as Tab, label: t('nav.dashboard', locale), icon: BarChart3 },
+    { id: 'prediction' as Tab, label: t('nav.prediction', locale), icon: Brain },
+    { id: 'analysis' as Tab, label: t('nav.analysis', locale), icon: Activity },
+    { id: 'news' as Tab, label: t('nav.news', locale), icon: Newspaper },
   ];
 
   return (
@@ -153,7 +193,31 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Theme toggle */}
+              <button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors"
+                title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+              >
+                {theme === 'dark' ? (
+                  <Sun className="w-4 h-4 text-yellow-400" />
+                ) : (
+                  <Moon className="w-4 h-4 text-slate-400" />
+                )}
+              </button>
+
+              {/* Language selector */}
+              <select
+                value={locale}
+                onChange={(e) => setLocale(e.target.value as Locale)}
+                className="select-custom text-xs py-1"
+              >
+                {LOCALES.map((l) => (
+                  <option key={l.id} value={l.id}>{l.flag} {l.label}</option>
+                ))}
+              </select>
+
               {/* Toggle Baba/Seco */}
               <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
                 <input
@@ -162,12 +226,12 @@ export default function Home() {
                   onChange={(e) => setShowBaba(e.target.checked)}
                   className="rounded bg-slate-700 border-slate-600"
                 />
-                Mostrar Baba
+                {t('header.showBaba', locale)}
               </label>
 
               {/* Unit selector */}
               <div className="flex items-center gap-1">
-                <span className="text-xs text-slate-500">Unidad:</span>
+                <span className="text-xs text-slate-500">{t('header.unit', locale)}:</span>
                 <select
                   value={unitId}
                   onChange={(e) => setUnitId(e.target.value)}
@@ -181,7 +245,7 @@ export default function Home() {
 
               {/* Ratio selector */}
               <div className="flex items-center gap-1">
-                <span className="text-xs text-slate-500">Ratio B/S:</span>
+                <span className="text-xs text-slate-500">{t('header.ratio', locale)}:</span>
                 <select
                   value={babaRatio}
                   onChange={(e) => setBabaRatio(parseFloat(e.target.value))}
@@ -275,10 +339,21 @@ export default function Home() {
             <div className="card">
               <div className="flex flex-col gap-3 mb-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="card-header mb-0">Precio Historico</h2>
-                  <button onClick={loadHistorical} className="btn-secondary text-xs py-1 px-2">
-                    <RefreshCw className="w-3 h-3" />
-                  </button>
+                  <h2 className="card-header mb-0">{t('dashboard.historicPrice', locale)}</h2>
+                  <div className="flex gap-2">
+                    {historical?.data && (
+                      <button
+                        onClick={() => exportHistoricalCSV(historical.data)}
+                        className="btn-secondary text-xs py-1 px-2 flex items-center gap-1"
+                      >
+                        <Download className="w-3 h-3" />
+                        CSV
+                      </button>
+                    )}
+                    <button onClick={loadHistorical} className="btn-secondary text-xs py-1 px-2">
+                      <RefreshCw className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Filtros de periodo */}
@@ -307,11 +382,11 @@ export default function Home() {
                   </div>
 
                   <div className="flex items-center gap-1">
-                    <span className="text-xs text-slate-500 mr-1">Intervalo:</span>
+                    <span className="text-xs text-slate-500 mr-1">{t('dashboard.interval', locale)}:</span>
                     {[
-                      { value: 'daily', label: 'Diario' },
-                      { value: 'weekly', label: 'Semanal' },
-                      { value: 'monthly', label: 'Mensual' },
+                      { value: 'daily', label: t('dashboard.daily', locale) },
+                      { value: 'weekly', label: t('dashboard.weekly', locale) },
+                      { value: 'monthly', label: t('dashboard.monthly', locale) },
                     ].map((opt) => (
                       <button
                         key={opt.value}
@@ -340,6 +415,21 @@ export default function Home() {
                 </div>
               )}
             </div>
+
+            {/* Mapa de productores */}
+            {currentPrice && (
+              <div className="card">
+                <h2 className="card-header flex items-center gap-2">
+                  <Map className="w-5 h-5 text-cacao-400" />
+                  {t('map.title', locale)}
+                </h2>
+                <ProducerMap
+                  internationalPrice={currentPrice.seco.price}
+                  unit={unit}
+                  babaRatio={babaRatio}
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -440,16 +530,51 @@ export default function Home() {
                   />
                 </div>
 
+                {/* Exportar prediccion */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => exportPredictionCSV(prediction)}
+                    className="btn-secondary text-xs flex items-center gap-1"
+                  >
+                    <Download className="w-3 h-3" />
+                    {t('export.csv', locale)}
+                  </button>
+                  <button
+                    onClick={() => exportPredictionPDF(prediction, currentPrice?.seco?.price || prediction.seco.forecast[0])}
+                    className="btn-secondary text-xs flex items-center gap-1"
+                  >
+                    <Download className="w-3 h-3" />
+                    {t('export.pdf', locale)}
+                  </button>
+                </div>
+
                 {/* Comparacion interactiva de modelos */}
                 <div className="card">
-                  <h2 className="card-header">Comparacion de Modelos</h2>
+                  <h2 className="card-header">{t('prediction.comparison', locale)}</h2>
                   <p className="text-xs text-slate-500 mb-4">
-                    Activa o desactiva cada modelo para comparar sus predicciones individuales vs el ensemble
+                    {t('prediction.comparisonDesc', locale)}
                   </p>
                   <ModelComparison
                     prediction={prediction}
                     historicalDates={historical?.data?.map((d: any) => d.date) || []}
                     historicalPrices={historical?.data?.map((d: any) => d.close_seco) || []}
+                    unit={unit}
+                  />
+                </div>
+
+                {/* Backtesting */}
+                <div className="card">
+                  <h2 className="card-header flex items-center gap-2">
+                    <History className="w-5 h-5 text-cacao-400" />
+                    {t('backtesting.title', locale)}
+                  </h2>
+                  <p className="text-xs text-slate-500 mb-4">
+                    {t('backtesting.desc', locale)}
+                  </p>
+                  <BacktestPanel
+                    data={backtest}
+                    onRun={loadBacktest}
+                    loading={loading.backtest || false}
                     unit={unit}
                   />
                 </div>
@@ -463,7 +588,18 @@ export default function Home() {
           <div className="space-y-6">
             <div className="card">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="card-header mb-0">Analisis: Por que subio o bajo?</h2>
+                <h2 className="card-header mb-0">{t('analysis.title', locale)}</h2>
+                <div className="flex gap-2">
+                  {analysis && (
+                    <button
+                      onClick={() => exportAnalysisCSV(analysis)}
+                      className="btn-secondary text-xs flex items-center gap-1"
+                    >
+                      <Download className="w-3 h-3" />
+                      CSV
+                    </button>
+                  )}
+                </div>
                 <button
                   onClick={loadAnalysis}
                   disabled={loading.analysis}
@@ -538,7 +674,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-slate-800 mt-12 py-6">
         <div className="max-w-7xl mx-auto px-4 text-center text-xs text-slate-600">
-          CacaoPredict v1.0 | Modelos: SARIMA + XGBoost + LSTM | Datos: Yahoo Finance, Open-Meteo
+          {t('footer.text', locale)}
         </div>
       </footer>
     </div>

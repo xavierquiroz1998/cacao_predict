@@ -38,7 +38,7 @@ export default function PredictionChart({
 
   const conv = (values: number[]) => values.map((v) => convertPrice(v, unit));
 
-  const traces: Plotly.Data[] = [
+  const traces: any[] = [
     // Histórico reciente
     {
       x: historicalDates.slice(-lastHistorical),

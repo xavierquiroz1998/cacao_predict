@@ -22,7 +22,7 @@ export default function HistoricalChart({ data, showBaba, unit }: HistoricalChar
   const secoValues = data.map((d) => convertPrice(d.close_seco, unit));
   const babaValues = data.map((d) => convertPrice(d.close_baba, unit));
 
-  const traces: Plotly.Data[] = [
+  const traces: any[] = [
     {
       x: dates,
       y: secoValues,

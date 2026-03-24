@@ -2,11 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== MODO OSCURO (default) ===== */
 body {
   background-color: #0f172a;
   color: #e2e8f0;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* ===== MODO CLARO ===== */
+body.light {
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+
+body.light .card {
+  @apply bg-white border-slate-200 shadow-md;
+}
+
+body.light .card-header {
+  @apply text-slate-800;
+}
+
+body.light .select-custom {
+  @apply bg-white border-slate-300 text-slate-800;
+}
+
+body.light .btn-secondary {
+  @apply bg-slate-200 hover:bg-slate-300 text-slate-800;
+}
+
+body.light header {
+  @apply bg-white/90 border-slate-200;
+}
+
+body.light footer {
+  @apply border-slate-200;
+}
+
+body.light nav button {
+  @apply text-slate-600;
+}
+
+/* ===== Componentes ===== */
 .card {
   @apply bg-slate-800 rounded-xl border border-slate-700 p-6 shadow-lg;
 }
