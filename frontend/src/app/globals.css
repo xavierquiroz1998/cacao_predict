@@ -11,39 +11,206 @@ body {
 
 /* ===== MODO CLARO ===== */
 body.light {
-  background-color: #f8fafc;
+  background-color: #f1f5f9;
   color: #1e293b;
 }
 
-body.light .card {
-  @apply bg-white border-slate-200 shadow-md;
+/* --- Header & Nav --- */
+body.light header {
+  @apply bg-white/95 border-slate-200 shadow-sm;
+}
+body.light header h1 { @apply text-slate-900; }
+body.light header p { @apply text-slate-500; }
+body.light header label { @apply text-slate-600; }
+body.light header span { @apply text-slate-500; }
+
+body.light nav button {
+  @apply text-slate-500;
+}
+body.light nav button:hover {
+  @apply text-slate-800 bg-slate-100;
 }
 
+/* --- Cards --- */
+body.light .card {
+  @apply bg-white border-slate-200 shadow-sm;
+}
 body.light .card-header {
   @apply text-slate-800;
 }
 
+/* --- Price Cards (gradient overrides) --- */
+body.light [class*="from-cacao-900"] {
+  background: linear-gradient(135deg, #fdf8f0, #f9eddb) !important;
+  border-color: #e9bc7e !important;
+}
+body.light [class*="from-amber-900"] {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7) !important;
+  border-color: #fbbf24 !important;
+}
+body.light [class*="from-cacao-900"] .text-white,
+body.light [class*="from-amber-900"] .text-white,
+body.light [class*="from-cacao-900"] span[class*="text-3xl"],
+body.light [class*="from-amber-900"] span[class*="text-3xl"] {
+  color: #1e293b !important;
+}
+body.light [class*="from-cacao-900"] .text-slate-400,
+body.light [class*="from-amber-900"] .text-slate-400 {
+  color: #64748b !important;
+}
+
+/* --- Generic text overrides --- */
+body.light .text-white { color: #1e293b !important; }
+body.light .text-slate-200 { color: #334155 !important; }
+body.light .text-slate-300 { color: #475569 !important; }
+body.light .text-slate-400 { color: #64748b !important; }
+body.light .text-slate-500 { color: #94a3b8 !important; }
+body.light .text-slate-600 { color: #94a3b8 !important; }
+
+/* --- Backgrounds --- */
+body.light .bg-slate-800,
+body.light .bg-slate-800\/50,
+body.light .bg-slate-800\/40,
+body.light .bg-slate-800\/30,
+body.light [class*="bg-slate-800"] {
+  background-color: #f8fafc !important;
+}
+body.light .bg-slate-700,
+body.light .bg-slate-700\/30,
+body.light [class*="bg-slate-700"] {
+  background-color: #e2e8f0 !important;
+}
+body.light .bg-slate-900,
+body.light .bg-slate-900\/80,
+body.light .bg-slate-900\/50,
+body.light [class*="bg-slate-900"] {
+  background-color: #f1f5f9 !important;
+}
+
+/* --- Borders --- */
+body.light .border-slate-700,
+body.light .border-slate-700\/50,
+body.light [class*="border-slate-700"] {
+  border-color: #e2e8f0 !important;
+}
+body.light .border-slate-800,
+body.light .border-slate-800\/50,
+body.light [class*="border-slate-800"] {
+  border-color: #e2e8f0 !important;
+}
+body.light .border-slate-600 {
+  border-color: #cbd5e1 !important;
+}
+
+/* --- Grid lines in charts (Plotly) --- */
+body.light .js-plotly-plot .gridlayer line {
+  stroke: #e2e8f0 !important;
+}
+
+/* --- Badges --- */
+body.light .badge-up {
+  @apply bg-emerald-100 text-emerald-700;
+}
+body.light .badge-down {
+  @apply bg-red-100 text-red-700;
+}
+body.light .badge-neutral {
+  @apply bg-slate-100 text-slate-600;
+}
+
+/* --- Forms --- */
 body.light .select-custom {
   @apply bg-white border-slate-300 text-slate-800;
 }
+body.light input[type="checkbox"] {
+  @apply bg-white border-slate-300;
+}
 
+/* --- Buttons --- */
 body.light .btn-secondary {
-  @apply bg-slate-200 hover:bg-slate-300 text-slate-800;
+  @apply bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300;
 }
 
-body.light header {
-  @apply bg-white/90 border-slate-200;
+/* --- Sentiment / Analysis panels --- */
+body.light [class*="bg-emerald-900"] {
+  background-color: #ecfdf5 !important;
+}
+body.light [class*="bg-red-900"] {
+  background-color: #fef2f2 !important;
+}
+body.light [class*="bg-amber-900"] {
+  background-color: #fffbeb !important;
+}
+body.light [class*="bg-blue-900"] {
+  background-color: #eff6ff !important;
+}
+body.light [class*="bg-orange-900"] {
+  background-color: #fff7ed !important;
+}
+body.light [class*="bg-green-900"] {
+  background-color: #f0fdf4 !important;
 }
 
+body.light [class*="border-emerald-800"] {
+  border-color: #a7f3d0 !important;
+}
+body.light [class*="border-red-800"] {
+  border-color: #fecaca !important;
+}
+body.light [class*="border-amber-800"] {
+  border-color: #fde68a !important;
+}
+body.light [class*="border-blue-700"] {
+  border-color: #bfdbfe !important;
+}
+body.light [class*="border-orange-700"] {
+  border-color: #fed7aa !important;
+}
+body.light [class*="border-green-700"] {
+  border-color: #bbf7d0 !important;
+}
+
+/* --- Footer --- */
 body.light footer {
   @apply border-slate-200;
 }
-
-body.light nav button {
-  @apply text-slate-600;
+body.light footer div {
+  color: #94a3b8 !important;
 }
 
-/* ===== Componentes ===== */
+/* --- Table --- */
+body.light table th {
+  @apply bg-slate-50 text-slate-600;
+}
+body.light table td {
+  @apply text-slate-700;
+}
+body.light table tr {
+  border-color: #e2e8f0 !important;
+}
+body.light table tr:hover {
+  background-color: #f8fafc !important;
+}
+
+/* --- Period/interval filter pills --- */
+body.light button[class*="bg-slate-700"] {
+  @apply bg-slate-100 text-slate-600;
+}
+body.light button[class*="bg-slate-700"]:hover {
+  @apply bg-slate-200 text-slate-800;
+}
+
+/* --- Scrollbar for light mode --- */
+body.light ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+body.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+/* =============================== */
+/* ===== Componentes (base) ===== */
+/* =============================== */
 .card {
   @apply bg-slate-800 rounded-xl border border-slate-700 p-6 shadow-lg;
 }
