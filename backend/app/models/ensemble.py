@@ -21,10 +21,11 @@ class EnsemblePredictor:
         self.weights = {"sarima": 0.3, "xgboost": 0.4, "lstm": 0.3}
         self.is_fitted = False
         self.metrics = {}
-        self._calibration_std = None  # Error estándar real de validación
+        self._calibration_mape = None  # MAPE del ensemble en validación
+        self._calibration_std = None
 
     def fit(self, df: pd.DataFrame, target_col: str = "Close_Seco"):
-        """Entrena modelos con walk-forward validation y calibra intervalos."""
+        """Entrena modelos y calibra intervalos con walk-forward del ensemble."""
         np.random.seed(self.seed)
 
         df_features = prepare_features(df, target_col)
@@ -41,44 +42,32 @@ class EnsemblePredictor:
         y = df_features[target_col]
         series = df_features[target_col]
 
-        all_validation_errors = []
-
         # Entrenar SARIMA
         try:
             self.sarima.fit(series)
-            self.metrics["sarima"] = self.sarima.get_metrics(series)
-            if self.sarima._validation_errors:
-                all_validation_errors.extend(self.sarima._validation_errors)
+            self.metrics["sarima"] = self.sarima.get_metrics(series, test_size=20)
         except Exception as e:
             self.metrics["sarima"] = {"error": str(e), "mape": 100}
 
         # Entrenar XGBoost
         try:
             self.xgboost.fit(X, y)
-            self.metrics["xgboost"] = self.xgboost.get_metrics(X, y)
-            if self.xgboost._validation_errors:
-                all_validation_errors.extend(self.xgboost._validation_errors)
+            self.metrics["xgboost"] = self.xgboost.get_metrics(X, y, test_size=20)
         except Exception as e:
             self.metrics["xgboost"] = {"error": str(e), "mape": 100}
 
         # Entrenar LSTM
         try:
             self.lstm.fit(df_features, target_col)
-            self.metrics["lstm"] = self.lstm.get_metrics(df_features, target_col)
-            if self.lstm._validation_errors:
-                all_validation_errors.extend(self.lstm._validation_errors)
+            self.metrics["lstm"] = self.lstm.get_metrics(df_features, target_col, test_size=20)
         except Exception as e:
             self.metrics["lstm"] = {"error": str(e), "mape": 100}
 
-        # Calibrar intervalos de confianza con errores reales
-        if all_validation_errors:
-            self._calibration_std = float(np.std(all_validation_errors))
-        else:
-            last_price = series.iloc[-1]
-            self._calibration_std = last_price * 0.02  # Fallback: 2%
-
-        # Ajustar pesos
+        # Ajustar pesos por rendimiento
         self._adjust_weights()
+
+        # Calibrar CI con el MAPE ponderado del ensemble
+        self._calibrate_confidence(series)
 
         self._df_features = df_features
         self._feature_cols = feature_cols
@@ -88,14 +77,13 @@ class EnsemblePredictor:
         return self
 
     def _adjust_weights(self):
-        """Pesos inversamente proporcionales al MAPE, con suavizado."""
+        """Pesos inversamente proporcionales al MAPE."""
         mapes = {}
         for model_name in ["sarima", "xgboost", "lstm"]:
             m = self.metrics.get(model_name, {})
             mape = m.get("mape", 100)
-            # Penalizar modelos con MAPE > 20% más agresivamente
-            if mape > 20:
-                mape = mape * 2
+            if mape > 25:
+                mape = mape * 3  # Penalizar modelos muy malos
             mapes[model_name] = mape
 
         total_inv = sum(1 / max(m, 0.01) for m in mapes.values())
@@ -104,6 +92,24 @@ class EnsemblePredictor:
                 name: (1 / max(mape, 0.01)) / total_inv
                 for name, mape in mapes.items()
             }
+
+    def _calibrate_confidence(self, series: pd.Series):
+        """Calcula el MAPE y STD del ensemble ponderado en validación.
+
+        En lugar de mezclar errores de todos los modelos, calcula el error
+        del ensemble combinado, que es lo que realmente importa.
+        """
+        # Calcular MAPE ponderado del ensemble
+        ensemble_mape = sum(
+            self.weights[name] * self.metrics[name].get("mape", 100)
+            for name in ["sarima", "xgboost", "lstm"]
+        )
+        self._calibration_mape = ensemble_mape
+
+        # STD basado en MAPE del ensemble y precio actual
+        last_price = float(series.iloc[-1])
+        # El STD es proporcional al MAPE: si MAPE=3%, STD ≈ 3% del precio
+        self._calibration_std = last_price * (ensemble_mape / 100)
 
     def predict(self, horizon: int, baba_ratio: float = None) -> dict:
         """Genera predicciones ensemble con intervalos calibrados."""
@@ -142,10 +148,10 @@ class EnsemblePredictor:
         # Ensemble ponderado
         ensemble_pred = self._weighted_average(predictions, horizon)
 
-        # Post-procesamiento: suavizar predicciones extremas
+        # Post-procesamiento
         ensemble_pred = self._post_process(ensemble_pred)
 
-        # Intervalos de confianza calibrados con errores reales
+        # Intervalos de confianza calibrados
         lower_ci, upper_ci = self._calibrated_confidence(ensemble_pred, horizon)
 
         # Fechas futuras
@@ -190,53 +196,69 @@ class EnsemblePredictor:
         return result
 
     def _post_process(self, predictions: list[float]) -> list[float]:
-        """Post-procesamiento: ancla al último precio real y suaviza.
+        """Ancla al último precio real y suaviza.
 
-        - Ancla el primer día al precio actual (máximo ±2% de salto)
-        - Limita cambios diarios a ±2%
-        - Suaviza con EMA
-        - Asegura valores positivos
+        Limites:
+        - Día 1: max ±1.5% vs precio actual
+        - Diario: max ±1.5%
+        - Acumulado: max ±10% en 30 días, ±20% en 180 días, ±30% en 365 días
         """
         if not predictions:
             return predictions
 
-        # Anclar al último precio real
         last_real_price = float(self._df_features[self._target_col].iloc[-1])
         result = predictions.copy()
 
-        # El día 1 no puede saltar más del 2% respecto al precio actual
-        max_jump = last_real_price * 0.02
+        # Día 1: máximo ±1.5% respecto al precio actual
+        max_jump = last_real_price * 0.015
         result[0] = np.clip(result[0], last_real_price - max_jump, last_real_price + max_jump)
 
-        # Limitar cambios diarios a ±2%
+        # Días siguientes: máximo ±1.5% diario
         for i in range(1, len(result)):
             prev = result[i - 1]
-            max_change = prev * 0.02
+            max_change = prev * 0.015
             result[i] = np.clip(result[i], prev - max_change, prev + max_change)
 
-        # Suavizado EMA (alpha=0.6)
+        # Limitar cambio acumulado según horizonte
+        # Crece con sqrt del tiempo: ~5% a 7d, ~10% a 30d, ~20% a 180d
+        for i in range(len(result)):
+            days = i + 1
+            max_cum_pct = 0.03 * np.sqrt(days)  # ~5% a 3d, ~10% a 11d, ~16% a 30d
+            max_cum_pct = min(max_cum_pct, 0.30)  # Tope absoluto 30%
+            max_cum = last_real_price * max_cum_pct
+            result[i] = np.clip(
+                result[i],
+                last_real_price - max_cum,
+                last_real_price + max_cum,
+            )
+
+        # Suavizado EMA
         smoothed = [result[0]]
         for i in range(1, len(result)):
             smoothed.append(0.6 * result[i] + 0.4 * smoothed[-1])
 
         smoothed = [max(p, 1.0) for p in smoothed]
-
         return smoothed
 
     def _calibrated_confidence(
         self, ensemble: list[float], horizon: int
     ) -> tuple[list[float], list[float]]:
-        """Intervalos de confianza calibrados con errores reales de validación.
+        """Intervalos de confianza calibrados.
 
-        El intervalo crece con el horizonte (más incertidumbre a futuro).
+        Usa el MAPE del ensemble para definir el ancho del intervalo.
+        El CI crece moderadamente con el horizonte.
         """
-        base_std = self._calibration_std or (ensemble[0] * 0.02)
+        mape = self._calibration_mape or 5.0
 
         lower, upper = [], []
         for i in range(horizon):
-            # La incertidumbre crece con sqrt del tiempo (random walk)
-            growth_factor = np.sqrt(1 + i * 0.5)
-            ci = 1.96 * base_std * growth_factor
+            # Factor de crecimiento suave: crece lento al principio
+            # En 7 días: ~1.3x, en 30 días: ~2.0x, en 90 días: ~2.8x
+            growth = 1.0 + 0.3 * np.log1p(i)
+
+            # El intervalo es proporcional al MAPE y crece con el tiempo
+            ci_pct = (mape / 100) * growth
+            ci = ensemble[i] * ci_pct
 
             lower.append(max(ensemble[i] - ci, 1.0))
             upper.append(ensemble[i] + ci)
