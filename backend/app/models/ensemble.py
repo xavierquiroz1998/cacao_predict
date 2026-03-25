@@ -1,4 +1,4 @@
-"""Modelo ensemble que combina SARIMA, XGBoost y LSTM."""
+"""Modelo ensemble mejorado: combina SARIMA, XGBoost y LSTM con calibración."""
 
 import numpy as np
 import pandas as pd
@@ -11,34 +11,44 @@ from app.config import settings
 
 
 class EnsemblePredictor:
-    """Combina predicciones de SARIMA, XGBoost y LSTM con pesos adaptativos."""
+    """Ensemble con pesos calibrados, intervalos realistas y post-procesamiento."""
 
-    def __init__(self):
+    def __init__(self, seed: int = 42):
+        self.seed = seed
         self.sarima = SARIMAPredictor()
-        self.xgboost = XGBoostPredictor()
-        self.lstm = LSTMPredictor()
+        self.xgboost = XGBoostPredictor(seed=seed)
+        self.lstm = LSTMPredictor(seed=seed)
         self.weights = {"sarima": 0.3, "xgboost": 0.4, "lstm": 0.3}
         self.is_fitted = False
         self.metrics = {}
+        self._calibration_std = None  # Error estándar real de validación
 
     def fit(self, df: pd.DataFrame, target_col: str = "Close_Seco"):
-        """Entrena los 3 modelos y ajusta pesos según rendimiento."""
+        """Entrena modelos con walk-forward validation y calibra intervalos."""
+        np.random.seed(self.seed)
+
         df_features = prepare_features(df, target_col)
 
-        # Columnas de features (excluir Date, target, y columnas Baba)
         exclude = ["Date", target_col] + [
             c for c in df_features.columns if c.endswith("_Baba")
         ]
-        feature_cols = [c for c in df_features.columns if c not in exclude and df_features[c].dtype in [np.float64, np.int64, np.int32, np.float32]]
+        feature_cols = [
+            c for c in df_features.columns
+            if c not in exclude and df_features[c].dtype in [np.float64, np.int64, np.int32, np.float32]
+        ]
 
         X = df_features[feature_cols]
         y = df_features[target_col]
         series = df_features[target_col]
 
+        all_validation_errors = []
+
         # Entrenar SARIMA
         try:
             self.sarima.fit(series)
             self.metrics["sarima"] = self.sarima.get_metrics(series)
+            if self.sarima._validation_errors:
+                all_validation_errors.extend(self.sarima._validation_errors)
         except Exception as e:
             self.metrics["sarima"] = {"error": str(e), "mape": 100}
 
@@ -46,6 +56,8 @@ class EnsemblePredictor:
         try:
             self.xgboost.fit(X, y)
             self.metrics["xgboost"] = self.xgboost.get_metrics(X, y)
+            if self.xgboost._validation_errors:
+                all_validation_errors.extend(self.xgboost._validation_errors)
         except Exception as e:
             self.metrics["xgboost"] = {"error": str(e), "mape": 100}
 
@@ -53,10 +65,19 @@ class EnsemblePredictor:
         try:
             self.lstm.fit(df_features, target_col)
             self.metrics["lstm"] = self.lstm.get_metrics(df_features, target_col)
+            if self.lstm._validation_errors:
+                all_validation_errors.extend(self.lstm._validation_errors)
         except Exception as e:
             self.metrics["lstm"] = {"error": str(e), "mape": 100}
 
-        # Ajustar pesos inversamente proporcionales al MAPE
+        # Calibrar intervalos de confianza con errores reales
+        if all_validation_errors:
+            self._calibration_std = float(np.std(all_validation_errors))
+        else:
+            last_price = series.iloc[-1]
+            self._calibration_std = last_price * 0.02  # Fallback: 2%
+
+        # Ajustar pesos
         self._adjust_weights()
 
         self._df_features = df_features
@@ -67,13 +88,16 @@ class EnsemblePredictor:
         return self
 
     def _adjust_weights(self):
-        """Ajusta los pesos del ensemble según el rendimiento de cada modelo."""
+        """Pesos inversamente proporcionales al MAPE, con suavizado."""
         mapes = {}
         for model_name in ["sarima", "xgboost", "lstm"]:
             m = self.metrics.get(model_name, {})
-            mapes[model_name] = m.get("mape", 100)
+            mape = m.get("mape", 100)
+            # Penalizar modelos con MAPE > 20% más agresivamente
+            if mape > 20:
+                mape = mape * 2
+            mapes[model_name] = mape
 
-        # Peso inversamente proporcional al MAPE
         total_inv = sum(1 / max(m, 0.01) for m in mapes.values())
         if total_inv > 0:
             self.weights = {
@@ -82,14 +106,11 @@ class EnsemblePredictor:
             }
 
     def predict(self, horizon: int, baba_ratio: float = None) -> dict:
-        """Genera predicciones ensemble para el horizonte dado.
-
-        Returns:
-            Dict con predicciones seco, baba, intervalos de confianza,
-            pesos del ensemble y métricas individuales.
-        """
+        """Genera predicciones ensemble con intervalos calibrados."""
         if not self.is_fitted:
             raise ValueError("El ensemble no ha sido entrenado.")
+
+        np.random.seed(self.seed)
 
         if baba_ratio is None:
             baba_ratio = settings.BABA_TO_SECO_RATIO_DEFAULT
@@ -105,7 +126,7 @@ class EnsemblePredictor:
 
         # XGBoost
         try:
-            last_row = self._df_features[self._feature_cols].iloc[[-1]]
+            last_row = self._df_features[self.xgboost._selected_features].iloc[[-1]]
             xgb_pred = self.xgboost.predict_recursive(last_row, horizon)
             predictions["xgboost"] = xgb_pred
         except Exception:
@@ -121,10 +142,13 @@ class EnsemblePredictor:
         # Ensemble ponderado
         ensemble_pred = self._weighted_average(predictions, horizon)
 
-        # Intervalos de confianza basados en la dispersión entre modelos
-        lower_ci, upper_ci = self._calculate_confidence(predictions, ensemble_pred, horizon)
+        # Post-procesamiento: suavizar predicciones extremas
+        ensemble_pred = self._post_process(ensemble_pred)
 
-        # Generar fechas futuras
+        # Intervalos de confianza calibrados con errores reales
+        lower_ci, upper_ci = self._calibrated_confidence(ensemble_pred, horizon)
+
+        # Fechas futuras
         last_date = self._df_features["Date"].iloc[-1]
         future_dates = pd.bdate_range(start=last_date + pd.Timedelta(days=1), periods=horizon)
 
@@ -148,7 +172,7 @@ class EnsemblePredictor:
         }
 
     def _weighted_average(self, predictions: dict, horizon: int) -> list[float]:
-        """Calcula el promedio ponderado de las predicciones disponibles."""
+        """Promedio ponderado de predicciones disponibles."""
         result = [0.0] * horizon
         total_weight = 0.0
 
@@ -165,27 +189,56 @@ class EnsemblePredictor:
 
         return result
 
-    def _calculate_confidence(
-        self, predictions: dict, ensemble: list[float], horizon: int
-    ) -> tuple[list[float], list[float]]:
-        """Calcula intervalos de confianza basados en la dispersión entre modelos."""
-        available = [v for v in predictions.values() if v is not None]
+    def _post_process(self, predictions: list[float]) -> list[float]:
+        """Post-procesamiento: ancla al último precio real y suaviza.
 
-        if len(available) < 2:
-            # Si solo hay un modelo, usar ±5% como CI
-            lower = [p * 0.95 for p in ensemble]
-            upper = [p * 1.05 for p in ensemble]
-            return lower, upper
+        - Ancla el primer día al precio actual (máximo ±2% de salto)
+        - Limita cambios diarios a ±2%
+        - Suaviza con EMA
+        - Asegura valores positivos
+        """
+        if not predictions:
+            return predictions
+
+        # Anclar al último precio real
+        last_real_price = float(self._df_features[self._target_col].iloc[-1])
+        result = predictions.copy()
+
+        # El día 1 no puede saltar más del 2% respecto al precio actual
+        max_jump = last_real_price * 0.02
+        result[0] = np.clip(result[0], last_real_price - max_jump, last_real_price + max_jump)
+
+        # Limitar cambios diarios a ±2%
+        for i in range(1, len(result)):
+            prev = result[i - 1]
+            max_change = prev * 0.02
+            result[i] = np.clip(result[i], prev - max_change, prev + max_change)
+
+        # Suavizado EMA (alpha=0.6)
+        smoothed = [result[0]]
+        for i in range(1, len(result)):
+            smoothed.append(0.6 * result[i] + 0.4 * smoothed[-1])
+
+        smoothed = [max(p, 1.0) for p in smoothed]
+
+        return smoothed
+
+    def _calibrated_confidence(
+        self, ensemble: list[float], horizon: int
+    ) -> tuple[list[float], list[float]]:
+        """Intervalos de confianza calibrados con errores reales de validación.
+
+        El intervalo crece con el horizonte (más incertidumbre a futuro).
+        """
+        base_std = self._calibration_std or (ensemble[0] * 0.02)
 
         lower, upper = [], []
         for i in range(horizon):
-            values = [preds[i] for preds in available if i < len(preds)]
-            if values:
-                std = np.std(values)
-                lower.append(ensemble[i] - 1.96 * std)
-                upper.append(ensemble[i] + 1.96 * std)
-            else:
-                lower.append(ensemble[i] * 0.95)
-                upper.append(ensemble[i] * 1.05)
+            # La incertidumbre crece con sqrt del tiempo (random walk)
+            growth_factor = np.sqrt(1 + i * 0.5)
+            ci = 1.96 * base_std * growth_factor
+
+            lower.append(max(ensemble[i] - ci, 1.0))
+            upper.append(ensemble[i] + ci)
 
         return lower, upper
